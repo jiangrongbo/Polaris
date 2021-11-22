@@ -16,15 +16,14 @@
  */
 
 #include "vmm.h"
-#include "../cpu/cpu.h"
 #include "../kernel/panic.h"
 #include "../klibc/math.h"
 #include "../klibc/printf.h"
 #include "pmm.h"
-#include <cpuid.h>
 #include <liballoc.h>
 
 struct pagemap *kernel_pagemap = NULL;
+uint64_t top_pmid = 0;
 
 void vmm_init(struct stivale2_mmap_entry *memmap, size_t memmap_entries,
 			  struct stivale2_pmr *pmrs, size_t pmr_entries,
@@ -112,6 +111,7 @@ void vmm_switch_pagemap(struct pagemap *pagemap) {
 struct pagemap *vmm_new_pagemap(void) {
 	struct pagemap *pagemap = kmalloc(sizeof(struct pagemap));
 	pagemap->top_level = pmm_allocz(1);
+	pagemap->pmid = top_pmid++;
 	return pagemap;
 }
 
@@ -179,6 +179,17 @@ bool vmm_map_page(struct pagemap *pagemap, uint64_t virt_addr,
 	// Use 4KB pages otherwise
 	pml1[pml1_entry] = phys_addr | flags;
 	return true;
+}
+
+// Same as vmm_map_page but checks if the CPU supports GB pages or not and then calls vmm_map_page
+// with the appropriate arguments
+
+bool vmm_map(struct pagemap *pagemap, uint64_t virt_addr, uint64_t phys_addr, uint64_t flags) {
+	uint32_t a = 0, b = 0, c = 0, d = 0;
+	if (__get_cpuid(0x80000001, &a, &b, &c, &d)) {
+		return vmm_map_page(pagemap, virt_addr, phys_addr, flags,
+							!(d & CPUID_GBPAGE), d & CPUID_GBPAGE);
+	}
 }
 
 void vmm_page_fault_handler(registers_t *reg) {

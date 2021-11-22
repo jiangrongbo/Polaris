@@ -74,6 +74,14 @@ void *stivale2_get_tag(struct stivale2_struct *stivale2_struct, uint64_t id) {
 	}
 }
 
+void process_a(void) {
+	int x = 0x650;
+	printf("a: %p\n", &x);
+	for(;;)
+		asm("sti");
+	thread_exit(0);
+}
+
 void kernel_main(struct stivale2_struct *stivale2_struct) {
 	printf("Hello World!\n");
 	printf("A (4 bytes): %p\n", kmalloc(4));
@@ -102,7 +110,9 @@ void kernel_main(struct stivale2_struct *stivale2_struct) {
 	char *buf = kmalloc(st->st_size);
 	res->read(res, buf, 0, st->st_size);
 	printf("Reading /root/initramfs.txt: %s\n", buf);
-	load_elf("/root/test");
+	printf("kernel_tasks: Address: %p\n", buf);
+	// load_elf("/root/test");
+	process_create("a", (uintptr_t)process_a, 0, HIGH);
 	for (;;)
 		asm("hlt");
 }

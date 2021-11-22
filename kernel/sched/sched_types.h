@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "../mm/vmm.h"
 
 struct cpu_context {
 	uint64_t r15;
@@ -66,8 +67,10 @@ struct process {
 	enum block_on block_on;
 	enum priority priority;
 	struct process *parent;
+	struct pagemap *ppagemap;
 	thread_vec_t ttable;
 	uint8_t return_code;
+	uintptr_t current_top_addr;
 	bool killed;
 	uint8_t timeslice;
 	size_t target_tick;

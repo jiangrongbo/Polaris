@@ -20,14 +20,18 @@
 #include "../klibc/lock.h"
 #include "../klibc/printf.h"
 #include "scheduler.h"
+#include "../mm/pmm.h"
 
 static uint32_t nextid = 1;
 lock_t thread_lock;
 
-struct thread *alloc_new_thread(void) {
+struct thread *alloc_new_thread(struct process *proc) {
 	struct thread *thrd = kmalloc(sizeof(struct thread));
 	LOCK(thread_lock);
-	thrd->tstack = kmalloc(TSTACK_SIZE);
+	thrd->tstack = pmm_allocz(TSTACK_SIZE / PAGE_SIZE);
+	for(size_t i = 0; i < TSTACK_SIZE; i += PAGE_SIZE) {
+		vmm_map(proc->ppagemap, proc->current_top_addr + i, thrd->tstack + i, 0b11);
+	}
 	if (!thrd->tstack)
 		PANIC("Failed to allocate kernel stack page");
 	thrd->state_t = INITIAL;
@@ -42,7 +46,7 @@ struct thread *alloc_new_thread(void) {
 }
 
 void thread_init(uintptr_t addr, uint64_t args, struct process *proc) {
-	struct thread *thrd = alloc_new_thread();
+	struct thread *thrd = alloc_new_thread(proc);
 	thrd->context->rip = addr;
 	thrd->context->rdi = args;
 	thrd->killed = false;
@@ -53,7 +57,7 @@ void thread_init(uintptr_t addr, uint64_t args, struct process *proc) {
 }
 
 void thread_create(uintptr_t addr, uint64_t args) {
-	struct thread *thrd = alloc_new_thread();
+	struct thread *thrd = alloc_new_thread(running_proc());
 	thrd->context->rip = addr;
 	thrd->context->rdi = args;
 	thrd->killed = false;
@@ -83,6 +87,7 @@ void thread_exit(uint64_t return_val) {
 		thread_unblock(thrd);
 	thrd->state_t = TERMINATED;
 	thrd->return_val = return_val;
+	pmm_free(thrd->tstack, TSTACK_SIZE/PAGE_SIZE);
 	if (thrd == running_proc()->ttable.data[0]) {
 		running_proc()->return_code = (uint8_t)thrd->return_val;
 		process_exit();

@@ -296,18 +296,18 @@ static const char *exceptionMessages[] = {"Divide by zero",
 										  "Breakpoint",
 										  "Overflow",
 										  "Bound Range Exceeded",
-										  "Invaild Opcode",
+										  "Invalid Opcode",
 										  "Device Not Available",
 										  "Double fault",
 										  "Co-processor Segment Overrun",
-										  "Invaild TSS",
+										  "Invalid TSS",
 										  "Segment not present",
 										  "Stack-Segment Fault",
 										  "GPF",
 										  "Page Fault",
 										  "Reserved",
 										  "x87 Floating Point Exception",
-										  "allignement check",
+										  "alignment check",
 										  "Machine check",
 										  "SIMD floating-point exception",
 										  "Virtualization Exception",
@@ -329,6 +329,7 @@ static const char *exceptionMessages[] = {"Divide by zero",
 static eventHandlers_t eventHandlers[256] = {NULL};
 
 void isr_handler(registers_t *r) {
+	printf("Interrupt!\n");
 	if (r->isrNumber < 32) {
 		if (r->isrNumber == 14)
 			vmm_page_fault_handler(r);

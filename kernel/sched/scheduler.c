@@ -51,8 +51,10 @@ void sched_init(void) {
 			this_cpu->cpu_state->running_thrd = topthrd;
 			toproc->state = RUNNING;
 			topthrd->state_t = RUNNING;
+			printf("scheduler: process name: %s\n", toproc->name);
+			printf("scheduler: pmid: %d\n", toproc->ppagemap->pmid);
 			context_switch(&this_cpu->cpu_state->scheduler, topthrd->context);
-
+			vmm_switch_pagemap(toproc->ppagemap);
 			this_cpu->cpu_state->running_proc = NULL;
 			this_cpu->cpu_state->running_thrd = NULL;
 		}
@@ -78,6 +80,7 @@ inline struct thread *running_thrd(void) {
 }
 
 void yield_to_scheduler(void) {
+	vmm_switch_pagemap(kernel_pagemap);
 	asm volatile("cli");
 	struct thread *thrd = running_thrd();
 	if (thrd->state_t != RUNNING) {
